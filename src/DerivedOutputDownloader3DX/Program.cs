@@ -38,6 +38,7 @@ internal static class Program
         var appOpts = configuration.GetSection(AppOptions.SectionName).Get<AppOptions>() ?? new AppOptions();
         var threeOpts = configuration.GetSection(ThreeExperienceOptions.SectionName).Get<ThreeExperienceOptions>()
                         ?? new ThreeExperienceOptions();
+        threeOpts.ApplyTenantDefaults();
 
         using var loggerFactory = LoggerFactory.Create(b =>
         {

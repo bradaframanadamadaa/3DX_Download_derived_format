@@ -115,6 +115,8 @@ public partial class App : Application
 
         Options = config.GetSection(ThreeExperienceOptions.SectionName)
                         .Get<ThreeExperienceOptions>() ?? new ThreeExperienceOptions();
+
+        Options.ApplyTenantDefaults();
     }
 }
 
