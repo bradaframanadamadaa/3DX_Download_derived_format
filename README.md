@@ -70,23 +70,27 @@ samples/
 
 ## Configuration
 
-1. Copier `samples/appsettings.sample.json` vers `src/DerivedOutputDownloader3DX.UI/appsettings.json`
-2. Renseigner les URLs de votre tenant et votre `SecurityContext`
+1. Copier `samples/appsettings.sample.json` à côté de l'exe sous le nom `appsettings.json`
+2. Remplir **uniquement 2 champs** — tout le reste est calculé automatiquement
 3. Ne **jamais** committer `appsettings.json` (déjà dans `.gitignore`)
 
-```jsonc
+```json
 {
   "ThreeExperience": {
-    "PlatformUrl":     "https://VOTRE_TENANT-eu1-ifwe.3dexperience.3ds.com",
-    "ThreeDSpaceUrl":  "https://VOTRE_TENANT-eu1-space.3dexperience.3ds.com/enovia",
-    "FedSearchUrl":    "https://VOTRE_TENANT-eu1-fedsearch.3dexperience.3ds.com",
-    "Tenant":          "VOTRE_TENANT",
-    "SecurityContext": "ctx::VPLMProjectAdministrator.Company Name.Common Space",
-    "PassportBaseUrl": "https://iam.3dexperience.3ds.com",
-    "ForceCasAuthentication": true
+    "Tenant":             "R1132XXXXXXXXXX",
+    "CollaborativeSpace": "Common Space"
   }
 }
 ```
+
+| Champ | Description | Exemple |
+|-------|-------------|---------|
+| `Tenant` | Numéro de plateforme 3DEXPERIENCE | `R1132102597931` |
+| `CollaborativeSpace` | Nom de l'espace collaboratif | `Common Space` |
+
+Toutes les URLs (`PlatformUrl`, `ThreeDSpaceUrl`, `FedSearchUrl`, `PassportBaseUrl`) ainsi que le `SecurityContext` (`ctx::VPLMProjectLeader.Company Name.{CollaborativeSpace}`) sont construits automatiquement au démarrage.
+
+> Le login et le mot de passe sont saisis dans l'interface — rien à stocker dans le fichier.
 
 ---
 
