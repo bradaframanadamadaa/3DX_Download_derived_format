@@ -1,0 +1,316 @@
+<Window x:Class="DerivedOutputDownloader3DX.UI.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="3DEXPERIENCE — Derived Output Downloader"
+        Width="980" Height="760"
+        MinWidth="800" MinHeight="620"
+        WindowStartupLocation="CenterScreen"
+        Background="#F5F7FA">
+
+    <Window.Resources>
+        <Style x:Key="HeaderTextStyle" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="#444"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
+        </Style>
+        <Style x:Key="SectionTitleStyle" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="#005386"/>
+        </Style>
+        <Style x:Key="PrimaryButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="#005386"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Padding" Value="16,6"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="3" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#006DB7"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Background" Value="#B0BEC5"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="SecondaryButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Foreground" Value="#005386"/>
+            <Setter Property="BorderBrush" Value="#005386"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Padding" Value="14,5"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="3" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#E8F4FD"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="BorderBrush" Value="#B0BEC5"/>
+                                <Setter Property="Foreground" Value="#B0BEC5"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="60"/>   <!-- Header -->
+            <RowDefinition Height="*"/>    <!-- Contenu -->
+            <RowDefinition Height="28"/>   <!-- Status bar -->
+        </Grid.RowDefinitions>
+
+        <!-- ===== HEADER ===== -->
+        <Border Grid.Row="0" Background="#005386">
+            <Grid Margin="20,0">
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="3DEXPERIENCE  Derived Output Downloader"
+                               Foreground="White" FontFamily="Segoe UI" FontSize="15" FontWeight="SemiBold"/>
+                </StackPanel>
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Right" Orientation="Horizontal">
+                    <ProgressBar IsIndeterminate="True" Width="120" Height="4" Foreground="White"
+                                 Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ===== CONTENU PRINCIPAL ===== -->
+        <Grid Grid.Row="1" Margin="16">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>       <!-- Recherche -->
+                <RowDefinition Height="8"/>
+                <RowDefinition Height="2*" MinHeight="120"/>  <!-- Résultats -->
+                <RowDefinition Height="8"/>
+                <RowDefinition Height="1.5*" MinHeight="120"/>  <!-- Formats dérivés -->
+                <RowDefinition Height="8"/>
+                <RowDefinition Height="Auto"/>       <!-- Dossier + Télécharger -->
+            </Grid.RowDefinitions>
+
+            <!-- ── Section Recherche ── -->
+            <Border Grid.Row="0" Background="White" BorderBrush="#DDE3EA" BorderThickness="1" CornerRadius="4" Padding="16,12">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="16"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Radio boutons -->
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                        <TextBlock Text="Rechercher par" Style="{StaticResource HeaderTextStyle}"/>
+                        <StackPanel Orientation="Horizontal">
+                            <RadioButton Content="Titre" IsChecked="{Binding SearchByTitle}"
+                                         FontFamily="Segoe UI" FontSize="12" Margin="0,0,12,0"/>
+                            <RadioButton Content="Nom" IsChecked="{Binding SearchByName}"
+                                         FontFamily="Segoe UI" FontSize="12"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- Champ de recherche -->
+                    <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                        <TextBlock Text="Terme de recherche" Style="{StaticResource HeaderTextStyle}"/>
+                        <TextBox Text="{Binding SearchTerm, UpdateSourceTrigger=PropertyChanged}"
+                                 FontFamily="Segoe UI" FontSize="13"
+                                 Padding="8,6" BorderBrush="#C0C8D0" BorderThickness="1"
+                                 Height="32"
+                                 x:Name="SearchBox"/>
+                    </StackPanel>
+
+                    <!-- Bouton Rechercher -->
+                    <Button Grid.Column="4" Content="🔍  Rechercher"
+                            Command="{Binding SearchCommand}"
+                            Style="{StaticResource PrimaryButtonStyle}"
+                            Height="32" VerticalAlignment="Bottom"/>
+                </Grid>
+            </Border>
+
+            <!-- ── Section Résultats ── -->
+            <Border Grid.Row="2" Background="White" BorderBrush="#DDE3EA" BorderThickness="1" CornerRadius="4" Padding="16,10">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Text="Résultats de recherche"
+                               Style="{StaticResource SectionTitleStyle}" Margin="0,0,0,8"/>
+                    <DataGrid Grid.Row="1"
+                              ItemsSource="{Binding SearchResults}"
+                              SelectedItem="{Binding SelectedResult}"
+                              AutoGenerateColumns="False"
+                              IsReadOnly="True"
+                              SelectionMode="Single"
+                              GridLinesVisibility="Horizontal"
+                              HeadersVisibility="Column"
+                              AlternatingRowBackground="#F8FBFD"
+                              BorderThickness="0"
+                              FontFamily="Segoe UI" FontSize="12"
+                              RowHeight="26">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Titre" Binding="{Binding Title}" Width="*"/>
+                            <DataGridTextColumn Header="Nom" Binding="{Binding Name}" Width="180"/>
+                            <DataGridTextColumn Header="Type" Binding="{Binding Type}" Width="100"/>
+                            <DataGridTextColumn Header="Rév." Binding="{Binding Revision}" Width="50"/>
+                            <DataGridTextColumn Header="État" Binding="{Binding MaturityState}" Width="80"/>
+                            <DataGridTextColumn Header="Espace Collab." Binding="{Binding CollaborativeSpace}" Width="130"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </Border>
+
+            <!-- ── Section Formats Dérivés ── -->
+            <Border Grid.Row="4" Background="White" BorderBrush="#DDE3EA" BorderThickness="1" CornerRadius="4" Padding="16,10">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*" MinHeight="80"/>
+                    </Grid.RowDefinitions>
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
+                        <TextBlock Text="Formats dérivés disponibles"
+                                   Style="{StaticResource SectionTitleStyle}"/>
+                        <TextBlock Text=" — " Foreground="#888" FontFamily="Segoe UI" FontSize="13"
+                                   Visibility="{Binding SelectedObjectTitle, Converter={StaticResource NonEmptyToVisibilityConverter}}"/>
+                        <TextBlock Text="{Binding SelectedObjectTitle}" FontFamily="Segoe UI" FontSize="13" Foreground="#333"
+                                   Visibility="{Binding SelectedObjectTitle, Converter={StaticResource NonEmptyToVisibilityConverter}}"/>
+                    </StackPanel>
+                    <DataGrid Grid.Row="1"
+                              ItemsSource="{Binding DerivedOutputItems}"
+                              AutoGenerateColumns="False"
+                              IsReadOnly="False"
+                              SelectionMode="Single"
+                              GridLinesVisibility="Horizontal"
+                              HeadersVisibility="Column"
+                              AlternatingRowBackground="#F8FBFD"
+                              BorderThickness="0"
+                              FontFamily="Segoe UI" FontSize="12"
+                              RowHeight="26"
+                              CanUserAddRows="False">
+                        <DataGrid.Columns>
+                            <DataGridCheckBoxColumn Header="✓" Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}" Width="40"/>
+                            <DataGridTextColumn Header="Format" Binding="{Binding Format}" Width="80" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="Fichier" Binding="{Binding FileName}" Width="*" IsReadOnly="True"/>
+                            <DataGridCheckBoxColumn Header="Exchange" Binding="{Binding IsExchangeFormat, Mode=OneWay}" Width="80" IsReadOnly="True"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </Border>
+
+            <!-- ── Dossier de destination + Boutons ── -->
+            <Border Grid.Row="6" Background="White" BorderBrush="#DDE3EA" BorderThickness="1" CornerRadius="4" Padding="16,10">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Column="0" Text="Dossier de destination :"
+                               FontFamily="Segoe UI" FontSize="12" Foreground="#444"
+                               VerticalAlignment="Center"/>
+
+                    <TextBox Grid.Column="2"
+                             Text="{Binding OutputDirectory, UpdateSourceTrigger=PropertyChanged}"
+                             FontFamily="Segoe UI" FontSize="12"
+                             Padding="8,5" BorderBrush="#C0C8D0" BorderThickness="1"
+                             Height="30" VerticalAlignment="Center"/>
+
+                    <Button Grid.Column="4" Content="Parcourir…"
+                            Command="{Binding BrowseDirectoryCommand}"
+                            Style="{StaticResource SecondaryButtonStyle}"
+                            Height="30"/>
+
+                    <!-- Bouton téléchargement unitaire -->
+                    <Button Grid.Column="6"
+                            Command="{Binding DownloadCommand}"
+                            Style="{StaticResource PrimaryButtonStyle}"
+                            Height="30">
+                        <Button.Content>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="⬇  Télécharger (" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding SelectedFormatsCount}" VerticalAlignment="Center"/>
+                                <TextBlock Text=" format(s))" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button.Content>
+                    </Button>
+
+                    <!-- Bouton téléchargement assemblage (visible si VPMReference sélectionné) -->
+                    <Button Grid.Column="8"
+                            Command="{Binding DownloadAssemblyCommand}"
+                            Visibility="{Binding IsAssemblySelected, Converter={StaticResource BoolToVisibilityConverter}}"
+                            Height="30"
+                            ToolTip="Développe le BOM et télécharge tous les formats dérivés des composants"
+                            Background="#E65100" Foreground="White"
+                            BorderThickness="0" FontFamily="Segoe UI" FontSize="12"
+                            Cursor="Hand">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border Background="{TemplateBinding Background}" CornerRadius="3" Padding="16,6">
+                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter Property="Background" Value="#BF360C"/>
+                                                </Trigger>
+                                                <Trigger Property="IsEnabled" Value="False">
+                                                    <Setter Property="Background" Value="#B0BEC5"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </Button.Style>
+                        <Button.Content>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="🔩  Télécharger assemblage" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button.Content>
+                    </Button>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- ===== BARRE DE STATUT ===== -->
+        <Border Grid.Row="2" Background="#E8EDF2" BorderBrush="#CDD5DE" BorderThickness="0,1,0,0">
+            <TextBlock Text="{Binding StatusMessage}"
+                       FontFamily="Segoe UI" FontSize="11" Foreground="#555"
+                       Margin="16,0" VerticalAlignment="Center"/>
+        </Border>
+    </Grid>
+</Window>

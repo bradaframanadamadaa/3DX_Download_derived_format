@@ -1,7 +1,22 @@
+# Build artifacts
 bin/
 obj/
-output/
+build/
+publish/
+
+# Fichiers de configuration locaux (contiennent des secrets)
+appsettings.json
+
+# Fichiers téléchargés (sauf le .gitkeep)
+output/*
+!output/.gitkeep
+
+# Fichiers Visual Studio / JetBrains
 *.user
 *.suo
 .vs/
-appsettings.json
+.idea/
+
+# Logs Serilog
+logs/
+*.log

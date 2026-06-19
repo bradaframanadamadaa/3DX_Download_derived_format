@@ -77,19 +77,11 @@ public sealed class DerivedOutputClient
     {
         var sc = await EnsureSecurityContextAsync(ct).ConfigureAwait(false);
 
-        // Étape 1 — CSRF
-        var csrf = await FetchCsrfAsync(sc, ct).ConfigureAwait(false);
-        if (string.IsNullOrWhiteSpace(csrf))
-        {
-            throw new InvalidOperationException(
-                "Impossible d'obtenir le token CSRF 3DSpace. Vérifiez l'authentification et le SecurityContext.");
-        }
-
-        // Étape 2 — DownloadTicket
+        // Étape 1 — DownloadTicket (pas de CSRF requis selon spec dsdo v1)
         var (ticketUrl, ticket, serverFileName) = await GetDownloadTicketAsync(
-            descriptor.ParentId, descriptor.Id, sc, csrf, ct).ConfigureAwait(false);
+            descriptor.ParentId, descriptor.Id, sc, ct).ConfigureAwait(false);
 
-        // Étape 3 — FCS
+        // Étape 2 — FCS
         var fileName = serverFileName ?? descriptor.FileName;
         return await DownloadViaFcsAsync(ticketUrl, ticket, fileName, outputDirectory, ct).ConfigureAwait(false);
     }
@@ -321,47 +313,101 @@ public sealed class DerivedOutputClient
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // DownloadTicket (POST)
+    // DownloadTicket (POST) — fallback multi-variantes
     // ─────────────────────────────────────────────────────────────────────────
 
     private async Task<(string ticketUrl, string ticket, string? fileName)> GetDownloadTicketAsync(
         string parentId,
         string fileId,
         string securityContext,
-        string csrfToken,
         CancellationToken ct)
     {
         var tenant = _opts.Tenant?.Trim() ?? "";
+
+        // fileId encodé dans l'URL (ex: "PDF_Manivelle_Pion.pdf" → "PDF_Manivelle_Pion.pdf")
         var url = DerivedOutputApiEndpoints.DownloadTicketUrl(_opts.ThreeDSpaceUrl, parentId, fileId, tenant);
-
-        _log.LogInformation("[dsdo] POST DownloadTicket : {Url}", url);
-
-        using var request = new HttpRequestMessage(HttpMethod.Post, url)
-        {
-            Content = new StringContent("{}", Encoding.UTF8, "application/json")
-        };
-        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        ApplySc(request, securityContext);
-        request.Headers.TryAddWithoutValidation("ENO_CSRF_TOKEN", csrfToken);
-
-        using var response = await _http.SendAsync(request, ct).ConfigureAwait(false);
-        var body = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
-
         _log.LogInformation(
-            "[dsdo] DownloadTicket HTTP {Code} — {Preview}",
-            (int)response.StatusCode,
-            Truncate(body, 400));
+            "[dsdo] POST DownloadTicket | parentId={PID} | fileId={FID} | URL={Url}",
+            parentId, fileId, url);
 
-        if (!response.IsSuccessStatusCode)
+        // Récupération du CSRF (non bloquant si indisponible)
+        string? csrf = null;
+        try
         {
-            var hint = body.Contains("Export rights", StringComparison.OrdinalIgnoreCase)
-                ? " Droits Export requis : vérifiez Platform Manager → Data Exchange, ou testez le téléchargement depuis l'UI 3DEXPERIENCE avec le même compte."
-                : "";
-            throw new InvalidOperationException(
-                $"dsdo DownloadTicket HTTP {(int)response.StatusCode} {response.ReasonPhrase} : {Truncate(body, 400)}{hint}");
+            csrf = await FetchCsrfAsync(securityContext, ct).ConfigureAwait(false);
+            _log.LogInformation("[dsdo] CSRF : {Status}", csrf != null ? "présent" : "absent");
+        }
+        catch (Exception ex)
+        {
+            _log.LogWarning("[dsdo] CSRF non obtenu : {Err}", ex.Message);
         }
 
-        return ParseTicketResponse(body);
+        // Variantes à tester dans l'ordre (label, body, contentType, withCsrf)
+        var variants = new (string Label, string? Body, string Mime, bool UseCsrf)[]
+        {
+            ("A — \"\" + json + CSRF",         "\"\"",           "application/json", true),
+            ("B — \"\" + json sans CSRF",       "\"\"",           "application/json", false),
+            ("C — null + json + CSRF",          "null",           "application/json", true),
+            ("D — \"<fileId>\" + json + CSRF",  $"\"{fileId}\"",  "application/json", true),
+            ("E — {{}} + json + CSRF",          "{}",             "application/json", true),
+        };
+
+        var recap = new List<(string Label, int Code, string Preview)>();
+        string? successBody = null;
+
+        foreach (var (label, body, mime, useCsrf) in variants)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, url)
+            {
+                Content = new StringContent(body ?? "null", Encoding.UTF8, mime)
+            };
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            ApplySc(request, securityContext);
+
+            if (useCsrf && !string.IsNullOrWhiteSpace(csrf))
+                request.Headers.TryAddWithoutValidation("ENO_CSRF_TOKEN", csrf);
+
+            using var response = await _http.SendAsync(request, ct).ConfigureAwait(false);
+            var respBody = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+            var code = (int)response.StatusCode;
+            var preview = Truncate(respBody, 150);
+
+            recap.Add((label, code, preview));
+            _log.LogInformation("[dsdo] Variante {Label} → HTTP {Code} | {Preview}", label, code, preview);
+
+            if (response.IsSuccessStatusCode)
+            {
+                successBody = respBody;
+                break;
+            }
+        }
+
+        // Tableau récapitulatif
+        _log.LogInformation("[dsdo] ─────────── Récapitulatif DownloadTicket ───────────");
+        foreach (var (lbl, code, preview) in recap)
+            _log.LogInformation("[dsdo]  {Label,-40} → {Code} | {Preview}", lbl, code, preview);
+        _log.LogInformation("[dsdo] ─────────────────────────────────────────────────────");
+
+        if (successBody != null)
+            return ParseTicketResponse(successBody);
+
+        // Diagnostic final
+        var allExport = recap.All(r =>
+            r.Preview.Contains("Export rights", StringComparison.OrdinalIgnoreCase));
+
+        if (allExport)
+        {
+            throw new InvalidOperationException(
+                "dsdo DownloadTicket : TOUTES les variantes retournent \"Export rights\".\n" +
+                "→ Le blocage est côté droits plateforme, pas côté code.\n" +
+                "→ Dans 3DEXPERIENCE Platform Manager : vérifiez Data Exchange → Export pour le rôle " +
+                $"«{securityContext}».\n" +
+                "→ Testez aussi avec un rôle Owner ou depuis l'UI avant de réessayer.");
+        }
+
+        var lastError = recap[^1];
+        throw new InvalidOperationException(
+            $"dsdo DownloadTicket : aucune variante n'a réussi. Dernière erreur ({lastError.Code}) : {lastError.Preview}");
     }
 
     private (string ticketUrl, string ticket, string? fileName) ParseTicketResponse(string body)
@@ -545,14 +591,18 @@ public sealed class DerivedOutputClient
             return exact;
         }
 
-        // Même espace collaboratif (dernier segment), rôle potentiellement différent dans la config
+        // Même espace collaboratif (dernier segment) — préférer VPLMProjectLeader (droits Export)
         var configCollab = fromConfig.Split('.')[^1];
-        var byCollab = available.FirstOrDefault(c =>
-            c.EndsWith("." + configCollab, StringComparison.OrdinalIgnoreCase));
+        var candidates = available
+            .Where(c => c.EndsWith("." + configCollab, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        var byCollab = candidates.FirstOrDefault(c =>
+                c.StartsWith("VPLMProjectLeader.", StringComparison.OrdinalIgnoreCase))
+            ?? candidates.FirstOrDefault();
         if (byCollab != null)
         {
             _log.LogWarning(
-                "[dsdo] SecurityContext config « {Config} » introuvable — utilisation de « {Resolved} » (espace {Collab}).",
+                "[dsdo] SecurityContext config « {Config} » → résolu en « {Resolved} » (espace {Collab}).",
                 fromConfig,
                 byCollab,
                 configCollab);
@@ -577,7 +627,11 @@ public sealed class DerivedOutputClient
                 "Vérifiez que le compte est correctement configuré dans 3DEXPERIENCE.");
         }
 
-        // Premier contexte par défaut (l'utilisateur peut le préciser via appsettings.json)
+        // Préférer VPLMProjectLeader : seul ce rôle a les droits Export sur DownloadTicket
+        var leader = contexts.FirstOrDefault(c =>
+            c.StartsWith("VPLMProjectLeader.", StringComparison.OrdinalIgnoreCase));
+        if (leader != null) return leader;
+
         return contexts[0];
     }
 
@@ -659,10 +713,8 @@ public sealed class DerivedOutputClient
     {
         if (!string.IsNullOrWhiteSpace(securityContext))
         {
-            // URL-encode pour les espaces dans l'org name (ex. "Company Name")
-            request.Headers.TryAddWithoutValidation(
-                "SecurityContext",
-                Uri.EscapeDataString(securityContext));
+            // Format brut : Role.Organization.CollabSpace — ne pas URL-encoder (spec officielle dsdo v1)
+            request.Headers.TryAddWithoutValidation("SecurityContext", securityContext);
         }
     }
 

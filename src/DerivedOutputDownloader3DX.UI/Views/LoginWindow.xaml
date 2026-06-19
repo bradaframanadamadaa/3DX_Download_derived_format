@@ -1,0 +1,92 @@
+<Window x:Class="DerivedOutputDownloader3DX.UI.Views.LoginWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="3DEXPERIENCE — Connexion"
+        Width="420" SizeToContent="Height" MinHeight="340"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize"
+        Background="#F5F7FA">
+
+    <Grid>
+        <!-- Bande supérieure -->
+        <Grid.RowDefinitions>
+            <RowDefinition Height="80"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Background="#005386">
+            <StackPanel VerticalAlignment="Center" Margin="24,0">
+                <TextBlock Text="3DEXPERIENCE" Foreground="White" FontSize="18" FontWeight="Bold" FontFamily="Segoe UI"/>
+                <TextBlock Text="Derived Output Downloader" Foreground="#A8CFEA" FontSize="11" FontFamily="Segoe UI"/>
+            </StackPanel>
+        </Border>
+
+        <StackPanel Grid.Row="1" Margin="32,24,32,16" VerticalAlignment="Top">
+            <!-- Identifiant -->
+            <TextBlock Text="Identifiant" FontFamily="Segoe UI" FontSize="12" Foreground="#555" Margin="0,0,0,4"/>
+            <TextBox x:Name="UsernameBox"
+                     Text="{Binding Username, UpdateSourceTrigger=PropertyChanged}"
+                     FontFamily="Segoe UI" FontSize="13"
+                     Padding="8,6" BorderBrush="#C0C8D0" BorderThickness="1"
+                     Height="34"/>
+
+            <!-- Mot de passe -->
+            <TextBlock Text="Mot de passe" FontFamily="Segoe UI" FontSize="12" Foreground="#555" Margin="0,14,0,4"/>
+            <PasswordBox x:Name="PasswordBox"
+                         FontFamily="Segoe UI" FontSize="13"
+                         Padding="8,6" BorderBrush="#C0C8D0" BorderThickness="1"
+                         Height="34"/>
+
+            <!-- Bouton -->
+            <Button x:Name="LoginButton"
+                    Content="Se connecter"
+                    Command="{Binding LoginCommand}"
+                    Margin="0,20,0,0" Height="36"
+                    Background="#005386" Foreground="White"
+                    FontFamily="Segoe UI" FontSize="13" FontWeight="SemiBold"
+                    BorderThickness="0" Cursor="Hand">
+                <Button.Style>
+                    <Style TargetType="Button">
+                        <Setter Property="Background" Value="#005386"/>
+                        <Setter Property="Foreground" Value="White"/>
+                        <Setter Property="BorderThickness" Value="0"/>
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="Button">
+                                    <Border Background="{TemplateBinding Background}"
+                                            CornerRadius="3"
+                                            Padding="{TemplateBinding Padding}">
+                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Background" Value="#006DB7"/>
+                                        </Trigger>
+                                        <Trigger Property="IsEnabled" Value="False">
+                                            <Setter Property="Background" Value="#A0B8CC"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </Button.Style>
+            </Button>
+
+            <!-- Message d'erreur -->
+            <TextBlock Text="{Binding ErrorMessage}"
+                       Foreground="#C0392B"
+                       FontFamily="Segoe UI" FontSize="11"
+                       TextWrapping="Wrap"
+                       Margin="0,10,0,0"
+                       Visibility="{Binding ErrorMessage, Converter={StaticResource NonEmptyToVisibilityConverter}}"/>
+
+            <!-- Indicateur de chargement -->
+            <StackPanel Orientation="Horizontal" Margin="0,8,0,0"
+                        Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibilityConverter}}">
+                <ProgressBar IsIndeterminate="True" Width="160" Height="4" Foreground="#005386"/>
+                <TextBlock Text=" Connexion en cours…" FontFamily="Segoe UI" FontSize="11" Foreground="#777" VerticalAlignment="Center"/>
+            </StackPanel>
+        </StackPanel>
+    </Grid>
+</Window>

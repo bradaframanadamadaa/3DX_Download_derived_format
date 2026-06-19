@@ -1,0 +1,355 @@
+<Window x:Class="DerivedOutputDownloader3DX.UI.Views.AssemblyBrowserWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:DerivedOutputDownloader3DX.UI.ViewModels"
+        xmlns:conv="clr-namespace:DerivedOutputDownloader3DX.UI.Converters"
+        Title="{Binding AssemblyTitle, StringFormat='Assemblage : {0}'}"
+        Width="860" Height="640"
+        MinWidth="640" MinHeight="420"
+        WindowStartupLocation="CenterOwner"
+        Background="#F5F7FA"
+        ResizeMode="CanResizeWithGrip">
+
+    <Window.Resources>
+
+        <conv:InverseBoolToVisibilityConverter x:Key="InvBoolVis"/>
+        <conv:StringToVisibilityConverter      x:Key="StrVis"/>
+        <BooleanToVisibilityConverter          x:Key="BoolVis"/>
+
+        <!-- Style de base des boutons (coins arrondis, hover) -->
+        <Style x:Key="FlatButtonStyle" TargetType="Button">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="3"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Background" Value="#B0BEC5"/>
+                                <Setter Property="Foreground" Value="White"/>
+                                <Setter Property="BorderBrush" Value="#B0BEC5"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Opacity" Value="0.85"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Supprime la sélection bleue native sur les ListViewItem -->
+        <Style TargetType="ListViewItem">
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListViewItem">
+                        <Border Name="Bd"
+                                Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#E8F4FD"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Template d'une ligne de format (Format3D / FormatDRW) — avec checkbox -->
+        <DataTemplate x:Key="FormatRowTemplate" DataType="{x:Type vm:DownloadRowVM}">
+            <Grid Margin="{Binding IndentMargin}"
+                  ToolTip="{Binding DrawingTitle, StringFormat='Mise en plan : {0}'}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="24"/>
+                    <ColumnDefinition Width="42"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Case à cocher -->
+                <CheckBox Grid.Column="0"
+                          IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                          VerticalAlignment="Center"/>
+
+                <!-- Badge catégorie coloré -->
+                <Border Grid.Column="1" Margin="2,2,6,2" CornerRadius="3"
+                        Background="{Binding CategoryBackground}">
+                    <TextBlock Text="{Binding Category}"
+                               Foreground="White" FontFamily="Segoe UI"
+                               FontSize="9" FontWeight="Bold"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               Padding="3,1"/>
+                </Border>
+
+                <!-- Format + titre mise en plan -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Label}"
+                               FontFamily="Segoe UI" FontSize="12" FontWeight="SemiBold"
+                               Foreground="#1A2E45" Margin="0,0,6,0"/>
+                    <TextBlock Text="{Binding DrawingTitle, StringFormat='({0})'}"
+                               FontFamily="Segoe UI" FontSize="11" Foreground="#7B4F9E"
+                               VerticalAlignment="Center"
+                               Visibility="{Binding DrawingTitle, Converter={StaticResource StrVis}}"/>
+                </StackPanel>
+
+                <!-- Nom de fichier -->
+                <TextBlock Grid.Column="3"
+                           Text="{Binding FileName}"
+                           FontFamily="Consolas" FontSize="11" Foreground="#607D8B"
+                           VerticalAlignment="Center" Margin="8,0,4,0"
+                           TextTrimming="CharacterEllipsis" MaxWidth="240"/>
+            </Grid>
+        </DataTemplate>
+
+        <!-- Template d'une ligne d'en-tête (assemblage ou pièce feuille) — sans checkbox -->
+        <DataTemplate x:Key="HeaderRowTemplate" DataType="{x:Type vm:DownloadRowVM}">
+            <Border Margin="{Binding IndentMargin}"
+                    BorderThickness="0,0,0,1" BorderBrush="#E0E6ED"
+                    Padding="0,3,0,4">
+                <StackPanel Orientation="Horizontal">
+                    <!-- Icône assemblage -->
+                    <TextBlock Text="▶" Foreground="#005386" FontSize="10"
+                               Margin="0,1,6,0" VerticalAlignment="Center"
+                               Visibility="{Binding IsAssembly, Converter={StaticResource BoolVis}}"/>
+                    <!-- Icône pièce feuille -->
+                    <TextBlock Text="●" Foreground="#2C7A3A" FontSize="9"
+                               Margin="0,1,6,0" VerticalAlignment="Center">
+                        <TextBlock.Visibility>
+                            <Binding Path="IsAssembly" Converter="{StaticResource InvBoolVis}"/>
+                        </TextBlock.Visibility>
+                    </TextBlock>
+
+                    <!-- Nom du nœud -->
+                    <TextBlock Text="{Binding Label}" FontFamily="Segoe UI"
+                               VerticalAlignment="Center">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsAssembly}" Value="True">
+                                        <Setter Property="FontSize"   Value="13"/>
+                                        <Setter Property="FontWeight" Value="Bold"/>
+                                        <Setter Property="Foreground" Value="#005386"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsAssembly}" Value="False">
+                                        <Setter Property="FontSize"   Value="12"/>
+                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                        <Setter Property="Foreground" Value="#2C3E50"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+
+        <!-- Sélecteur de template -->
+        <vm:RowTemplateSelector x:Key="RowSelector"
+                                FormatTemplate="{StaticResource FormatRowTemplate}"
+                                HeaderTemplate="{StaticResource HeaderRowTemplate}"/>
+
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="56"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- ── Header ─────────────────────────────────────────────────────── -->
+        <Border Grid.Row="0" Background="#005386" Padding="20,0">
+            <Grid>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="📦" FontSize="18" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding AssemblyTitle}"
+                               Foreground="White" FontFamily="Segoe UI"
+                               FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <!-- Compteur sélection (visible seulement quand chargé) -->
+                <StackPanel Orientation="Horizontal"
+                            HorizontalAlignment="Right" VerticalAlignment="Center"
+                            Visibility="{Binding IsLoading, Converter={StaticResource InvBoolVis}}">
+                    <TextBlock FontFamily="Segoe UI" FontSize="12" Foreground="#A8CFEA">
+                        <Run Text="{Binding SelectedCount, Mode=OneWay}"/>
+                        <Run Text=" / "/>
+                        <Run Text="{Binding TotalFormats, Mode=OneWay}"/>
+                        <Run Text=" format(s) sélectionné(s)"/>
+                    </TextBlock>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ── Corps ──────────────────────────────────────────────────────── -->
+        <Grid Grid.Row="1">
+
+            <!-- Liste des formats (visible seulement quand IsLoading=False) -->
+            <ListView ItemsSource="{Binding Rows}"
+                      ItemTemplateSelector="{StaticResource RowSelector}"
+                      BorderThickness="0"
+                      ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                      VirtualizingPanel.IsVirtualizing="True"
+                      FontFamily="Segoe UI"
+                      Visibility="{Binding IsLoading, Converter={StaticResource InvBoolVis}}"/>
+
+            <!-- Overlay de chargement (visible seulement quand IsLoading=True) -->
+            <Grid Background="#F5F7FA"
+                  Visibility="{Binding IsLoading, Converter={StaticResource BoolVis}}">
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Width="400">
+                    <TextBlock Text="🔄" FontSize="32" HorizontalAlignment="Center" Margin="0,0,0,16"/>
+                    <TextBlock Text="{Binding LoadingMessage}"
+                               FontFamily="Segoe UI" FontSize="13" TextAlignment="Center"
+                               Foreground="#2C3E50" TextWrapping="Wrap" Margin="0,0,0,16"/>
+                    <ProgressBar Value="{Binding LoadingPercent, Mode=OneWay}"
+                                 Minimum="0" Maximum="100"
+                                 Height="6" Foreground="#005386" Background="#DDE3EA"
+                                 BorderThickness="0"/>
+                    <TextBlock Text="{Binding LoadingPercent, StringFormat='{}{0} %'}"
+                               FontFamily="Segoe UI" FontSize="11" Foreground="#607D8B"
+                               HorizontalAlignment="Center" Margin="0,6,0,0"/>
+                </StackPanel>
+            </Grid>
+
+        </Grid>
+
+        <!-- ── Footer ─────────────────────────────────────────────────────── -->
+        <Border Grid.Row="2" Background="#EEF1F5"
+                BorderBrush="#DDE3EA" BorderThickness="0,1,0,0"
+                Padding="16,10">
+            <StackPanel>
+
+                <!-- Ligne 1 : Filtres par format (visible après chargement) -->
+                <Border Visibility="{Binding IsLoading, Converter={StaticResource InvBoolVis}}"
+                        Margin="0,0,0,8">
+                    <StackPanel>
+                        <TextBlock Text="Filtrer par format :"
+                                   FontFamily="Segoe UI" FontSize="11" Foreground="#607D8B"
+                                   Margin="0,0,0,5"/>
+                        <ItemsControl ItemsSource="{Binding FormatFilters}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel Orientation="Horizontal"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:FormatFilterVM}">
+                                    <Button Margin="0,0,6,4"
+                                            Padding="8,4"
+                                            FontFamily="Segoe UI" FontSize="11"
+                                            Foreground="#1A2E45"
+                                            Background="White"
+                                            Cursor="Hand"
+                                            ToolTip="{Binding StateTip}"
+                                            Command="{Binding DataContext.ToggleFormatCommand,
+                                                      RelativeSource={RelativeSource AncestorType=Window}}"
+                                            CommandParameter="{Binding}">
+                                        <Button.Content>
+                                            <TextBlock Text="{Binding ButtonLabel}"
+                                                       FontFamily="Segoe UI" FontSize="11"/>
+                                        </Button.Content>
+                                        <!-- Style dynamique selon l'état -->
+                                        <Button.Style>
+                                            <Style TargetType="Button">
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="Button">
+                                                            <Border Name="Bd"
+                                                                    Background="{TemplateBinding Background}"
+                                                                    BorderBrush="{Binding BorderColor}"
+                                                                    BorderThickness="1.5"
+                                                                    CornerRadius="12"
+                                                                    Padding="{TemplateBinding Padding}">
+                                                                <ContentPresenter HorizontalAlignment="Center"
+                                                                                  VerticalAlignment="Center"/>
+                                                            </Border>
+                                                            <ControlTemplate.Triggers>
+                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                    <Setter TargetName="Bd" Property="Background" Value="#E8F4FD"/>
+                                                                </Trigger>
+                                                            </ControlTemplate.Triggers>
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                                <!-- Fond coloré si tout sélectionné -->
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding State}" Value="2">
+                                                        <Setter Property="Background" Value="#E8F4FD"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding State}" Value="1">
+                                                        <Setter Property="Background" Value="#F3EEF8"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
+                <!-- Séparateur -->
+                <Border Height="1" Background="#DDE3EA" Margin="0,0,0,8"
+                        Visibility="{Binding IsLoading, Converter={StaticResource InvBoolVis}}"/>
+
+                <!-- Ligne 2 : Tout / Aucun + Télécharger -->
+                <Grid>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
+                                IsEnabled="{Binding IsLoading, Converter={StaticResource InvBoolVis}}">
+                        <Button Content="✅  Tout sélectionner"
+                                Command="{Binding SelectAllCommand}"
+                                Padding="10,6" Margin="0,0,8,0"
+                                FontFamily="Segoe UI" FontSize="12"
+                                Background="White" BorderBrush="#CCC" BorderThickness="1"
+                                Foreground="#333" Cursor="Hand"
+                                Style="{StaticResource FlatButtonStyle}"/>
+
+                        <Button Content="☐  Tout désélectionner"
+                                Command="{Binding DeselectAllCommand}"
+                                Padding="10,6"
+                                FontFamily="Segoe UI" FontSize="12"
+                                Background="White" BorderBrush="#CCC" BorderThickness="1"
+                                Foreground="#333" Cursor="Hand"
+                                Style="{StaticResource FlatButtonStyle}"/>
+                    </StackPanel>
+
+                    <!-- Bouton Télécharger droite -->
+                    <Button HorizontalAlignment="Right"
+                            Command="{Binding DownloadCommand}"
+                            Padding="18,8"
+                            FontFamily="Segoe UI" FontSize="13" FontWeight="SemiBold"
+                            Background="#005386" Foreground="White" BorderThickness="0"
+                            Cursor="Hand"
+                            Style="{StaticResource FlatButtonStyle}">
+                        <Button.Content>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="⬇  Télécharger  "/>
+                                <TextBlock>
+                                    <TextBlock.Text>
+                                        <Binding Path="SelectedCount" StringFormat="({0} fichier(s))"/>
+                                    </TextBlock.Text>
+                                </TextBlock>
+                            </StackPanel>
+                        </Button.Content>
+                    </Button>
+                </Grid>
+
+            </StackPanel>
+        </Border>
+
+    </Grid>
+</Window>
